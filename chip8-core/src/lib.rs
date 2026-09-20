@@ -67,6 +67,21 @@ impl Emu {
         self.stack[self.sp as usize]
     }
 
+    pub fn tick(&mut self) {
+        // Fetch
+        let op = self.fetch();
+        // Decode
+        // Execute
+    }
+
+    fn fetch(&mut self) -> u16 {
+        let b0 = self.ram[self.pc as usize] as u16;
+        let b1 = self.ram[(self.pc + 1) as usize] as u16;
+        let op: u16 = (b0 << 8) | b1;
+        self.pc += 2;
+        op
+    }
+
     pub fn reset(&mut self) {
         self.pc = START_ADDR;
         self.ram = [0; RAM_SIZE];
