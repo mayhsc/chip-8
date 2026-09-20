@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
-name = "chip-8"
+name = "chip8-core"
 version = "0.1.0"
+
+[[package]]
+name = "desktop"
+version = "0.1.0"
+dependencies = [
+ "chip8-core",
+]
