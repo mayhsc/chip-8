@@ -82,6 +82,16 @@ impl Emu {
         op
     }
 
+    pub fn tick_timers(&mut self) {
+        if self.dt > 0 {
+            self.dt -= 1;
+        }
+        if self.st == 1 {
+            // BEEP
+        }
+        self.st -= 1;
+    }
+
     pub fn reset(&mut self) {
         self.pc = START_ADDR;
         self.ram = [0; RAM_SIZE];
