@@ -34,7 +34,7 @@ pub struct Emu {
     i_reg: u16,
     sp: u16,
     stack: [u16; STACK_SIZE],
-    kyes: [bool; NUM_KEYS],
+    keys: [bool; NUM_KEYS],
     dt: u8,
     st: u8,
 }
@@ -49,7 +49,7 @@ impl Emu {
             i_reg: 0,
             sp: 0,
             stack: [0; STACK_SIZE],
-            kyes: [false; NUM_KEYS],
+            keys: [false; NUM_KEYS],
             dt: 0,
             st: 0,
         };
@@ -65,5 +65,19 @@ impl Emu {
     fn pop(&mut self) -> u16 {
         self.sp -= 1;
         self.stack[self.sp as usize]
+    }
+
+    pub fn reset(&mut self) {
+        self.pc = START_ADDR;
+        self.ram = [0; RAM_SIZE];
+        self.screen = [false; SCREEN_WIDTH * SCREEN_HEIGHT];
+        self.regs = [0; NUM_REGS];
+        self.i_reg = 0;
+        self.sp = 0;
+        self.stack = [0; STACK_SIZE];
+        self.keys = [false; NUM_KEYS];
+        self.dt = 0;
+        self.st = 0;
+        self.ram[..FONTSET_SIZE].copy_from_slice(&FONTSET);
     }
 }
