@@ -70,8 +70,8 @@ impl Emu {
     pub fn tick(&mut self) {
         // Fetch
         let op = self.fetch();
-        // Decode
         // Execute
+        self.execute(op);
     }
 
     fn fetch(&mut self) -> u16 {
@@ -80,6 +80,110 @@ impl Emu {
         let op: u16 = (b0 << 8) | b1;
         self.pc += 2;
         op
+    }
+
+    fn execute(&mut self, op: u16) {
+        let digit1 = (op & 0xF000) >> 12;
+        let digit2 = (op & 0x0F00) >> 8;
+        let digit3 = (op & 0x00F0) >> 4;
+        let digit4 = op & 0x000F;
+        match (digit1, digit2, digit3, digit4) {
+            // 0000 - Nop
+            (0, 0, 0, 0) => return,
+            // 00E0 - Clear screen
+            (0, 0, 0xE, 0) => self.screen = [false; SCREEN_WIDTH * SCREEN_HEIGHT],
+            // 00EE - Return from Subroutine
+            (0, 0, 0xE, 0xE) => self.pc = self.pop(),
+            // 1NNN - Jump
+            (1, _, _, _) => self.pc = op & 0xFFF,
+            // 2NNN - Call Subroutine
+            (2, _, _, _) => {
+                self.push(self.pc);
+                self.pc = op & 0xFFF
+            }
+            // 3XNN - Skip next if VX == NN
+            (3, x, _, _) => {
+                if self.regs[x as usize] == (op & 0xFF) as u8 {
+                    self.pc += 2
+                }
+            }
+            // 4XNN - Skip next if VX != NN
+            (4, x, _, _) => {
+                if self.regs[x as usize] != (op & 0xFF) as u8 {
+                    self.pc += 2
+                }
+            }
+            // 5XY0 - Skip next if VX == VY
+            (5, x, y, _) => {
+                if self.regs[x as usize] == self.regs[y as usize] {
+                    self.pc += 2
+                }
+            }
+            //  6XNN - VX = NN
+            (6, x, _, _) => self.regs[x as usize] = (op & 0xFF) as u8,
+            // 7XNN - VX += NN
+            (7, x, _, _) => {
+                self.regs[x as usize] = self.regs[x as usize].wrapping_add((op & 0xFF) as u8)
+            }
+            // 8XY0 - VX = VY
+            (8, x, y, 0) => self.regs[x as usize] = self.regs[y as usize],
+            // VX |= VY
+            (8, x, y, 1) => {
+                self.regs[x as usize] |= self.regs[y as usize];
+            }
+            // VX &= VY
+            (8, x, y, 2) => {
+                self.regs[x as usize] &= self.regs[y as usize];
+            }
+            // VX = !VY
+            (8, x, y, 3) => {
+                self.regs[x as usize] = !self.regs[y as usize];
+            }
+            // 8XY4 - VX += VY
+            (8, x, y, 4) => {
+                let (new_vx, carry) = self.regs[x as usize].overflowing_add(self.regs[y as usize]);
+                self.regs[x as usize] = new_vx;
+                self.regs[0xF] = if carry { 1 } else { 0 };
+            }
+            // 8XY5 - VX -= VY
+            (8, x, y, 5) => {
+                let (new_vx, borrow) = self.regs[x as usize].overflowing_sub(self.regs[y as usize]);
+                self.regs[x as usize] = new_vx;
+                self.regs[0xF] = if borrow { 0 } else { 1 };
+            }
+            // 8XY6 - VX >>= 1
+            (8, x, _, 6) => {
+                let lsb = self.regs[x as usize] & 1;
+                self.regs[x as usize] >>= 1;
+                self.regs[0xF] = lsb;
+            }
+            // 8XY7 - VX = VY - VX
+            (8, x, y, 7) => {
+                let (new_vx, borrow) = self.regs[y as usize].overflowing_sub(self.regs[x as usize]);
+                self.regs[x as usize] = new_vx;
+                self.regs[0xF] = if borrow { 0 } else { 1 };
+            }
+            // 8XYE - VX <<= 1
+            (8, x, _, 0xE) => {
+                let msb = (self.regs[x as usize] >> 7) & 1;
+                self.regs[x as usize] <<= 1;
+                self.regs[0xF] = msb;
+            }
+            // 9XY0 - Skip next if VX != VY
+            (9, x, y, _) => {
+                if self.regs[x as usize] != self.regs[y as usize] {
+                    self.pc += 2
+                }
+            }
+            // ANNN - I = NNN
+            (0xA, _, _, _) => self.i_reg = op & 0xFFF,
+            // BNNN - Jump to V0 + NNN
+            (0xB, _, _, _) => {
+                let nnn = op & 0xFFF;
+                self.pc = (self.regs[0] as u16) + nnn;
+            }
+            (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op),
+        }
     }
 
     pub fn tick_timers(&mut self) {
