@@ -37,6 +37,7 @@ pub struct Emu {
     keys: [bool; NUM_KEYS],
     dt: u8,
     st: u8,
+    rng: u32,
 }
 
 impl Emu {
@@ -52,6 +53,7 @@ impl Emu {
             keys: [false; NUM_KEYS],
             dt: 0,
             st: 0,
+            rng: 0x67,
         };
         new_emu.ram[..FONTSET_SIZE].copy_from_slice(&FONTSET);
         new_emu
@@ -182,10 +184,42 @@ impl Emu {
                 let nnn = op & 0xFFF;
                 self.pc = (self.regs[0] as u16) + nnn;
             }
+            //  - VX = rand() & NN
+            (0xC, x, _, _) => self.regs[x as usize] = self.random_u8() & ((op & 0xFF) as u8),
+            // DXYN - Draw Sprite
+            (0xD, x, y, n) => {
+                let x_c = self.regs[x as usize] as u16;
+                let y_c = self.regs[y as usize] as u16;
+                let mut flipped = false;
+
+                for y_line in 0..n {
+                    let addr = self.i_reg + y_line;
+                    let pixels = self.ram[addr as usize];
+
+                    for x_line in 0..8 {
+                        if (pixels & (0b1000_0000 >> x_line)) != 0 {
+                            let x = (x_c + x_line) as usize % SCREEN_WIDTH;
+                            let y = (y_c + y_line) as usize % SCREEN_HEIGHT;
+                            let idx = x + SCREEN_WIDTH * y;
+                            flipped |= self.screen[idx];
+                            self.screen[idx] ^= true;
+                        }
+                    }
+                }
+                if flipped {
+                    self.regs[0xF] = 1;
+                } else {
+                    self.regs[0xF] = 0;
+                }
+            }
             (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op),
         }
     }
 
+    fn random_u8(&mut self) -> u8 {
+        self.rng = self.rng.wrapping_mul(1664525).wrapping_add(1013904223);
+        (self.rng >> 24) as u8
+    }
     pub fn tick_timers(&mut self) {
         if self.dt > 0 {
             self.dt -= 1;
