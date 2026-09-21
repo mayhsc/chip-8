@@ -212,6 +212,70 @@ impl Emu {
                     self.regs[0xF] = 0;
                 }
             }
+            // EX9E - Skip if Key Pressed
+            (0xE, x, 9, 0xE) => {
+                let key = self.keys[self.regs[x as usize] as usize];
+                if key {
+                    self.pc += 2
+                }
+            }
+            // EXA1 - Skip if Key Not Pressed
+            (0xE, x, 0xA, 1) => {
+                let key = self.keys[self.regs[x as usize] as usize];
+                if !key {
+                    self.pc += 2
+                }
+            }
+            // FX07 - VX = DT
+            (0xF, x, 0, 7) => self.regs[x as usize] = self.dt,
+            // WAIT KEY
+            (0xF, x, _, 0xA) => {
+                let mut pressed = false;
+                for i in 0..self.keys.len() {
+                    if self.keys[i] {
+                        self.regs[x as usize] = i as u8;
+                        pressed = true;
+                        break;
+                    }
+                }
+                if !pressed {
+                    self.pc -= 2;
+                }
+            }
+            // FX15 - DT = VX
+            (0xF, x, 1, 5) => self.dt = self.regs[x as usize],
+            // FX18 - ST = VX
+            (0xF, x, 1, 8) => self.st = self.regs[x as usize],
+            // FX1E - I += VX
+            (0xF, x, 1, 0xE) => self.i_reg = self.i_reg.wrapping_add(self.regs[x as usize] as u16),
+            // FX29 - Set I to Font Address
+            (0xF, x, 2, 9) => self.i_reg = (self.ram[x as usize] as u16) * 5,
+            // FX33 - I = BCD of VX
+            (0xF, x, 3, 3) => {
+                let vx = self.regs[x as usize] as f32;
+                let hundreds = (vx / 100.0).floor() as u8;
+                let tens = ((vx / 10.0) % 100.0).floor() as u8;
+                let ones = (vx % 10.0) as u8;
+                self.ram[self.i_reg as usize] = hundreds;
+                self.ram[(self.i_reg + 1) as usize] = tens;
+                self.ram[(self.i_reg + 2) as usize] = ones;
+            }
+            // FX55 - Store V0 - VX into I
+            (0xF, x, 5, 5) => {
+                let x = x as usize;
+                let i = self.i_reg as usize;
+                for idx in 0..=x {
+                    self.ram[i + idx] = self.regs[idx];
+                }
+            }
+            // FX65 - Load I into V0 - VX
+            (0xF, x, 6, 5) => {
+                let x = x as usize;
+                let i = self.i_reg as usize;
+                for idx in 0..=x {
+                    self.regs[idx] = self.ram[i + idx];
+                }
+            }
             (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op),
         }
     }
