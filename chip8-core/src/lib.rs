@@ -284,6 +284,7 @@ impl Emu {
         self.rng = self.rng.wrapping_mul(1664525).wrapping_add(1013904223);
         (self.rng >> 24) as u8
     }
+
     pub fn tick_timers(&mut self) {
         if self.dt > 0 {
             self.dt -= 1;
@@ -292,6 +293,21 @@ impl Emu {
             // BEEP
         }
         self.st -= 1;
+    }
+
+    pub fn get_display(&self) -> &[bool] {
+        &self.screen
+    }
+
+    pub fn keypress(&mut self, idx: usize, pressed: bool) {
+        self.keys[idx] = pressed
+    }
+
+    pub fn load(&mut self, data: &[u8]) {
+        let start = START_ADDR as usize;
+        let end = start + data.len();
+
+        self.ram[start..end].copy_from_slice(data);
     }
 
     pub fn reset(&mut self) {
