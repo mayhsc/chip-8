@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Read;
 
 const SCALE: u32 = 15;
+const TICKS_PER_FRAME: usize = 10;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
@@ -38,11 +39,16 @@ fn main() {
                 _ => {}
             }
         }
-        chip8.tick();
-        draw_screen(&chip8, &mut canvas);
-    }
 
-    canvas.present();
+        for _ in 0..TICKS_PER_FRAME {
+            chip8.tick();
+        }
+
+        chip8.tick_timers();
+        draw_screen(&chip8, &mut canvas);
+
+        canvas.present();
+    }
 }
 
 fn draw_screen(emu: &Emu, canvas: &mut Canvas<Window>) {
@@ -54,7 +60,6 @@ fn draw_screen(emu: &Emu, canvas: &mut Canvas<Window>) {
         if *pixel {
             let x = (i % SCREEN_WIDTH) as u32;
             let y = (i / SCREEN_WIDTH) as u32;
-            // let rect = Rect::new((x  SCALE) as i32, (y  SCALE) as i32, SCALE, SCALE);
             let rect = Rect::new((x * SCALE) as i32, (y * SCALE) as i32, SCALE, SCALE);
             canvas.fill_rect(rect).unwrap();
         }

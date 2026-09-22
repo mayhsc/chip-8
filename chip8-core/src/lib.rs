@@ -289,10 +289,12 @@ impl Emu {
         if self.dt > 0 {
             self.dt -= 1;
         }
-        if self.st == 1 {
-            // BEEP
+        if self.st > 0 {
+            if self.st == 1 {
+                // BEEP
+            }
+            self.st -= 1;
         }
-        self.st -= 1;
     }
 
     pub fn get_display(&self) -> &[bool] {
