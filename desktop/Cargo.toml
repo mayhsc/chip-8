@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 chip8-core = {path = "../chip8-core"}
+sdl3 = "0.20.0"
