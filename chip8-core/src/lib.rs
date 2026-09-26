@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use rodio::source::{SineWave, Source};
+
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 const RAM_SIZE: usize = 4096;
@@ -38,10 +42,13 @@ pub struct Emu {
     dt: u8,
     st: u8,
     rng: u32,
+    mixer: rodio::MixerDeviceSink,
 }
 
 impl Emu {
     pub fn new() -> Self {
+        let handle = rodio::DeviceSinkBuilder::open_default_sink()
+            .expect("Failed to open default audio stream");
         let mut new_emu = Self {
             pc: START_ADDR,
             ram: [0; RAM_SIZE],
@@ -54,6 +61,7 @@ impl Emu {
             dt: 0,
             st: 0,
             rng: 0x67,
+            mixer: handle,
         };
         new_emu.ram[..FONTSET_SIZE].copy_from_slice(&FONTSET);
         new_emu
@@ -285,13 +293,23 @@ impl Emu {
         (self.rng >> 24) as u8
     }
 
+    fn beep(&mut self) {
+        let source = SineWave::new(1800.0)
+            .take_duration(Duration::from_millis(40))
+            .amplify(0.25)
+            .fade_in(Duration::from_millis(2))
+            .fade_out(Duration::from_millis(15));
+
+        self.mixer.mixer().add(source);
+    }
+
     pub fn tick_timers(&mut self) {
         if self.dt > 0 {
             self.dt -= 1;
         }
         if self.st > 0 {
             if self.st == 1 {
-                // BEEP
+                self.beep();
             }
             self.st -= 1;
         }
