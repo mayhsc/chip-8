@@ -249,7 +249,7 @@ impl Emu {
             // FX1E - I += VX
             (0xF, x, 1, 0xE) => self.i_reg = self.i_reg.wrapping_add(self.regs[x as usize] as u16),
             // FX29 - Set I to Font Address
-            (0xF, x, 2, 9) => self.i_reg = (self.ram[x as usize] as u16) * 5,
+            (0xF, x, 2, 9) => self.i_reg = (self.regs[x as usize] as u16) * 5,
             // FX33 - I = BCD of VX
             (0xF, x, 3, 3) => {
                 let vx = self.regs[x as usize] as f32;
