@@ -5,9 +5,13 @@ use sdl3::{VideoSubsystem, event::Event, pixels::Color, render::Canvas, video::W
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::time::{Duration, Instant};
 
 const SCALE: u32 = 15;
 const TICKS_PER_FRAME: usize = 10;
+
+const TARGET_FPS: u32 = 60;
+const TIME_PER_FRAME: Duration = Duration::from_nanos(1_000_000_000 / TARGET_FPS as u64);
 
 fn main() {
     let args: Vec<_> = env::args().collect();
@@ -29,6 +33,8 @@ fn main() {
     chip8.load(&buffer);
 
     'gameloop: loop {
+        let frame_start = Instant::now();
+
         canvas.set_draw_color(Color::RGB(color_offset, 64, 255 - color_offset));
         canvas.clear();
 
@@ -67,6 +73,11 @@ fn main() {
         draw_screen(&chip8, &mut canvas);
 
         canvas.present();
+
+        let elapsed = frame_start.elapsed();
+        if elapsed < TIME_PER_FRAME {
+            std::thread::sleep(TIME_PER_FRAME - elapsed);
+        }
     }
 }
 
